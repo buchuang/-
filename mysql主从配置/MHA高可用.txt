@@ -1,0 +1,57 @@
+步骤：
+	1、配置集群内所有主机的SSH免认证登录
+		1.生成ssh秘钥
+			ssh-keygen
+			ssh-copy-id -i /root/.ssh/id_rsa '-p 22 root@192.168.100.233'
+			ssh-copy-id -i /root/.ssh/id_rsa '-p 22 root@192.168.100.234'
+			ssh-copy-id -i /root/.ssh/id_rsa '-p 22 root@192.168.100.235'
+			每个节点都要执行上面四行的命令
+			
+	2、安装MHA-node软件包和MHA-manager软件包
+		下载yum源 mha4mysql-node-0.57-0.el7.noarch.rpm 和 mha4mysql-manager-0.57-0.el7.noarch.rpm
+		yum -y install perl-Config-Tiny.noarch perl-Time-HiRes.x86_64 perl-Parallel-ForkManager perl-Log-Dispatch-Perl.noarch perl-DBD-MySQL ncftp
+		安装软件包 rpm -ivh mha4mysql-node-0.57-0.el7.noarch.rpm
+		在监控节点上面俩个安装包都安装，其他的只需要安装node包就行
+	3、配置主从复制集群（推荐gtid主从复制）
+		1.所有节点打开gtid_mode
+		2.复制主节点数据
+		3.启动复制链路
+			change master to master_host='192.168.100.233',master_user='repl', master_password='123456',master_auto_position=1;
+			start slave;
+			show slave status \G
+		4.配置所有节点主从配置
+		
+	4、配置MHA管理节点
+		1.建立目录 mkdir -p /etc/mha 并建立mysql_mha.cnf文件
+			vi mysql_mha.cnf
+			添加配置
+				[server default]
+				user=mha
+				password=123456
+				manager_workdir=/home/mysql_mha
+				manager_log=/home/mysql_mha/manager.log
+				remote_workdir=/home/mysql_mha
+				ssh_user=root
+				repl_user=repl
+				repl_password=123456
+				ping_interval=1
+				master_binlog_dir=/home/mysql/sql_log
+				master_ip_failover_script=/user/bin/master_ip_failover
+				secondary_check_script=/usr/bin/masterha_secondary_check -s 192.168.3.101 -s 192.168.3.102 -s 192.168.3.100
+				[server1]
+				hostname=192.168.3.100
+				candidate_master=1
+				[server2]
+				hostname=192.168.3.100
+				candidate_master=1
+				[server3]
+				hostname=192.168.3.100
+				no_master=1
+				
+		2.建立工作目录 mkdir -p /home/mysql_mha
+		3.在主节点上新建用户并授权
+			grant all privileges on *.* to mha@'192.168.100.%' identified by '123456';
+		4.在所有的节点下建立工作目录
+			mkdir -p /home/mysql_mha
+	5、使用matserha_check_ssh和masterha_check_repl对配置进行检验
+	6、启动并测试MHA服务

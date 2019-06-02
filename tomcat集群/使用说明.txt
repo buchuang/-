@@ -1,0 +1,16 @@
+单机部署多个应用
+1.复制多个tomcat,命名区分
+2.修改每个tomcat的server.xml中，在<Connector>节点中添加URIEncoding="UTF-8"
+3.第一个tomcat的配置不需再修改，接下来修改其他的tomcat
+4.修改vim /etc/profile中添加
+	export CATALINA_BASE=/User/imooc/tomcat1
+	export CATALINA_HOME=/User/imooc/tomcat1
+	export TOMCAT_HOME=/User/imooc/tomcat1
+
+	export CATALINA_2_BASE=/User/imooc/tomcat2
+	export CATALINA_2_HOME=/User/imooc/tomcat2
+	export TOMCAT_2_HOME=/User/imooc/tomcat2
+5.在Tomcat2的bin目录下找到catalina.sh找到OS开头的段，在下面加上
+export CATALINA_BASE=$CATALINA_2_BASE
+export CATALINA_HOME=$CATALINA_2_HOME
+6.再次修改server.xml，把端口改成和之前的端口不同

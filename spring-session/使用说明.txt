@@ -1,0 +1,7 @@
+1.引用pom
+2.新建一个RedisSessionConfig类，并在类上添加@Configuration和@EnableRedisHttpSession
+3.在application.properties上配置
+	
+    spring.redis.host=localhost  
+    spring.redis.port=6379  
+4.启动集群

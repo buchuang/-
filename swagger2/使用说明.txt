@@ -1,0 +1,8 @@
+1.引用pom
+2.添加Swagger2.java配置
+3.在控制类上添加
+	@Api(value = "公司", tags = "公司的接口")
+4.在控制类的方法上添加
+	@ApiOperation(value = "模糊查询公司")
+5.在浏览器中访问
+	http://localhost:8080/swagger-ui.html#

@@ -1,0 +1,40 @@
+1.在pom.xml文件的build里面添加
+	  <resource>
+             <directory>src/main/resources.${deploy.type}</directory>
+                <excludes>
+                    <exclude>*.jsp</exclude>
+                </excludes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
+2.在pom.xml中增加profiles节点（在build节点外）
+      <profiles>
+        <profile>
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <deploy.type>dev</deploy.type>
+            </properties>
+        </profile>
+        <profile>
+            <id>beta</id>
+            <properties>
+                <deploy.type>beta</deploy.type>
+            </properties>
+        </profile>
+        <profile>
+            <id>prod</id>
+            <properties>
+                <deploy.type>prod</deploy.type>
+            </properties>
+        </profile>
+    </profiles>
+3.新建对应的文件夹，并把要隔离的文件分开，公共的留下
+4.在idea右侧Maven Project，选中本地开发环境对应的环境，点击import change进行更新
+5.Maven环境隔离编译打包命令
+	mvn clean package -Dmaven.test.skip=true -Pdev
+	mvn clean package -Dmaven.test.skip=true -Pprod

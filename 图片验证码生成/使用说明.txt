@@ -1,0 +1,15 @@
+1.引用pom依赖
+2.配置KaptchaConfig.java
+3.引用
+	@Autowired
+	private Producer  producer;
+4.生成验证码code
+	producer.createText();
+5.生成图片
+	BufferedImage image=producer.createImage(code);返回BufferedImage
+6.设置响应头和类型，创建输出流并输出到ImageIO中
+	response.setHeader("Cache-Control","no-stroe,no-cache");
+	response.setContentType("image/jpeg");
+	ServletOutputStream out = response.getOutputStream();
+	ImageIO.write(image, "jpg", out);
+	IOUtil.closeQuietly(out);

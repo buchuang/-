@@ -1,0 +1,44 @@
+1、在主DB服务器上建立复制账号
+create user 'repl'@'192.168.100.%' identified by '123456'
+
+2、授权
+grant replication slave on *.* to 'repl'@'192.168.100.%'
+
+3、配置主数据库服务器
+log_bin=mysql-bin
+server_id=100
+
+4、配置从数据库服务器
+bin_log=mysql-bin
+server_id=101
+relay_log=mysql-relay-bin
+log_slave_update=on(可选)
+read_only=on(可选)
+
+5、数据备份
+mysqldump --master-data -single-transaction --triggers --routines --all-databases -uroot -p >> all.sql (保证主从数据库版本一致)
+scp all.sql root@192.168.100.233:/root
+
+6、启动复制链路
+mysql -uroot -p < all.sql
+
+change master to master_host='192.168.100.233', master_user='repl', master_password='123456',master_log_file='mysql_log_file_name',master_log_pos=4;
+
+7、开启复制
+start slave;
+
+8、查询复制状态
+show slave status \G
+
+9、查看主从服务器mysql线程
+show processlist \G
+
+10、配置多线程复制
+stop slave;
+set global slave_parallel_type='logical_clock';
+set global slave_parallel_workers=4;
+start slave;
+
+11、查看复制配置
+show variables like 'slave_parallel_type';
+

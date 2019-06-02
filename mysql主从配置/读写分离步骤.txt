@@ -1,0 +1,35 @@
+一、MMM部署
+环境：
+	两台主DB服务器
+	0-N个从DB服务器
+	监控服务器一台
+	IP地址 2*（n+1）
+	监控用户1个 权限 replication client
+	代理用户1个 权限 super，replication client，process
+	复制用户1个 权限 replication slave
+步骤
+1、配置主主复制及主从同步集群
+	备注：主主复制即两个服务器都是对方的主和从，都要执行change master to....
+2、安装主从节点所需的支持包
+	配置yum源 wget http://mirrors.opencas.cn/epel/epel-release-latest-6.noarch.rpm
+			  wget http://rpms.famillecollet.com/enterprise/remi-release-latest-6.rpm
+	安装yum源 rpm -ivh epel-remi-release-latest-6.rpm
+			  rpm -ivh remi-release-latest-6.rpm
+			  vi /etc/yum.repos.d/remi.repo 把enable=0换成1
+			  vi /etc/yum.repos.d/epel.repo 把baseurl前面的#去掉，把下面一行注释掉
+3、安装及配置MMM工具集
+	yum search mmm
+	yum install mysql-mmm-agent.noarch -y #这个必须在每个节点上必须安装的
+	安装监控 yum install -y mysql-mmm*
+	在主节点1中配置用户（在环境上已经表明）
+	(监控用户)grant replication client on *.* to 'mmm_monitor'@'192.168.3.%' identified by '123456';
+	(代理用户)grant super,replication client，process on *.* to 'mmm_agent'@'192.168.3.%' identified by '123456';
+	cd /etc/mysql-mmm文件夹下修改配置文件mmm_common.conf修改复制用户，代理用户和host db1,host db2,host db3,写角色虚拟ip，读角色虚拟ip
+	所有的节点都要配置
+	修改mmm_agent.conf文件，设置自己的节点名
+	配置监控信息，修改mmm_mon.conf文件ping_ips,监控账号和密码
+4、运行MMM监控服务
+	启动代理节点，systemctl start mysql-mmm-agent
+	启动监控节点 systemctl start mysql-mmm-monitor
+	查看各个节点的信息 mmm_control show
+5、测试环境

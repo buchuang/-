@@ -1,0 +1,28 @@
+	@GetMapping("list")
+	@RequiresPermissions("sys:menu:list")
+	@ApiOperation(value = "获取所有的菜单", tags = "菜单相关")
+	public List<SysMenuShow> list() throws Exception{
+		List<SysMenu> list = sysMenuService.list(new QueryWrapper<SysMenu>().eq("type",1).orderByAsc("order_num"));
+		List<SysMenuShow> menuShows = list.stream().map(e -> {
+			SysMenuShow sysMenuShow = new SysMenuShow();
+			BeanUtils.copyProperties(e, sysMenuShow);
+			return sysMenuShow;
+		}).collect(Collectors.toList());
+
+		Map<Long,SysMenuShow> menuShowMap=new HashMap<>();
+		menuShows.forEach(e->{
+			menuShowMap.put(e.getMenuId().longValue(),e);
+		});
+		List<SysMenuShow> menuShowList=new ArrayList<>();
+		menuShows.forEach(e->{
+			SysMenuShow child=e;
+			Long parentId=child.getParentId();
+			if(parentId==0){
+				menuShowList.add(child);
+			}else{
+				SysMenuShow parent=menuShowMap.get(parentId);
+				parent.getChildren().add(child);
+			}
+		});
+		return menuShowList;
+	}

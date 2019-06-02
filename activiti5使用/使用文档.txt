@@ -1,0 +1,154 @@
+1.引用pom
+2.在启动类上加上@SpringBootApplication(exclude = SecurityAutoConfiguration.class)
+3.配置文件加上
+spring:
+  activiti:
+    check-process-definitions: false
+4.流程部署
+	第一中：
+	Deployment deployment=repositoryService
+                                    .createDeployment()
+                                    .name("考试流程")
+                                    .addClasspathResource("diagrams/exam.bpmn")
+                                    .addClasspathResource("diagrams/exam.png")
+                                    .deploy();
+	第二中：
+	@RequestMapping("/deployProcDef")
+	public Object deployProcDef(@RequestParam("procDefFile")MultipartFile file){
+		Result result=new Result();
+		try {
+			repositoryService
+			.createDeployment()
+			.addInputStream(file.getOriginalFilename(), file.getInputStream())
+			.deploy();
+			result.setSuccess(true);
+		} catch (Exception e) {
+			e.printStackTrace();
+			result.setSuccess(false);
+		}
+	}
+5.开启流程实例
+        ProcessDefinition pd = repositoryService
+                .createProcessDefinitionQuery()
+                .processDefinitionKey("myProcess_1")
+                .latestVersion()
+                .singleResult();
+        ProcessInstance pi = runtimeService.startProcessInstanceById(pd.getId());
+6.完成任务节点
+	List<Task> tasks = taskService.createTaskQuery().processInstanceId(piid).list();
+	taskService.complete(tasks.get(0).getId());
+7.查询个人任务列表
+	User user=(User)session.getAttribute("user");
+		
+		List<Task> tasks=
+			taskService
+				.createTaskQuery()
+				.taskAssignee(user.getUsername())
+				.listPage((page-1)*rows, rows);
+		List<Map<String, Object>> taskList=new ArrayList<Map<String,Object>>();
+		for(Task task : tasks){
+			Map<String, Object> map=new HashMap<String, Object>();
+			
+			map.put("taskid", task.getId());
+			map.put("taskname", task.getName());
+			map.put("tasktime", DateUtil.getCurrentTime());
+			String pdid=task.getProcessDefinitionId();
+			ProcessDefinition pd=
+				repositoryService
+					.createProcessDefinitionQuery()
+					.processDefinitionId(pdid)
+					.singleResult();
+			map.put("pdname", pd.getName());
+			String piid=task.getProcessInstanceId();
+			map.put("piid", piid);
+			StayTicket stayTicket=stayTicketService.findBtByPiid(piid);
+			map.put("id", stayTicket.getId());
+			map.put("s_reason", stayTicket.getS_reason());
+			map.put("s_name", stayTicket.getS_name());
+			map.put("s_no", stayTicket.getS_no());
+			map.put("s_zdls", stayTicket.getS_zdls());
+			map.put("username", stayTicket.getUsername());
+			map.put("createtime", stayTicket.getCreatetime());
+			taskList.add(map);
+		}
+		Long total=
+			taskService
+				.createTaskQuery()
+				.taskAssignee(user.getUsername())
+				.count();
+		
+		Map<String, Object> map=new HashMap<String, Object>();
+		map.put("total", total);
+		map.put("rows", taskList);
+8.加载流程定义列表
+	ProcessDefinitionQuery query=repositoryService.createProcessDefinitionQuery();
+		List<ProcessDefinition> pds=query.listPage((page-1)*rows, rows);
+		List<Map<String,Object>> pdsList=new ArrayList<Map<String,Object>>();
+		
+		for(ProcessDefinition pd : pds){
+			Map<String, Object> map=new HashMap<String, Object>();
+			
+			map.put("id", pd.getId());
+			map.put("key", pd.getKey());
+			map.put("name", pd.getName());
+			map.put("version", pd.getVersion());
+			map.put("deployids", pd.getDeploymentId());
+			pdsList.add(map);
+		}
+		Long total=query.count();
+		Map<String, Object> map=new HashMap<String, Object>();
+		map.put("total", total);
+		map.put("rows", pdsList);
+9.删除流程定义
+	repositoryService.deleteDeployment(deployid,true);
+10.加载流程图片
+	@RequestMapping("/loadingImg")
+	public void loadingImg(String id, HttpServletResponse response) throws Exception{
+		ProcessDefinition processDefinition=
+				repositoryService
+					.createProcessDefinitionQuery()
+					.processDefinitionId(id)
+					.singleResult();
+		String deploymentId=processDefinition.getDeploymentId();
+		String resourceName=processDefinition.getDiagramResourceName();
+		
+		InputStream in=repositoryService.getResourceAsStream(deploymentId, resourceName);
+		OutputStream out=response.getOutputStream();
+		int i=0;
+		byte[] b = new byte[1024];
+		while((i=in.read(b))!=-1){
+			out.write(b, 0, i);
+		}
+		in.close();
+	}
+11。加载流程并高亮显示任务进度
+	@RequestMapping("/loadMonitorImg")
+	public void loadMonitorImg(String id,HttpServletResponse response) throws IOException{
+		ProcessInstance pi=runtimeService.createProcessInstanceQuery().processInstanceId(id).singleResult();
+		BpmnModel model=repositoryService.getBpmnModel(pi.getProcessDefinitionId());
+		List<String> ids=runtimeService.getActiveActivityIds(id);
+		ProcessDiagramGenerator processDiagramGenerator=new DefaultProcessDiagramGenerator();
+		
+		//Context.setProcessEngineConfiguration(processEngineConfiguration.getProcessEngineConfiguration());
+		InputStream in=processDiagramGenerator.generateDiagram(model, "png", ids,Collections.<String>emptyList(),"宋体","宋体",null,null, 1.0);
+		
+		OutputStream out=response.getOutputStream();
+		int i=0;
+		byte[] b = new byte[1024];
+		while((i=in.read(b))!=-1){
+			out.write(b, 0, i);
+		}
+		in.close();
+	}
+12.完成当前任务并判断当前实例是否结束
+	HistoricProcessInstance hpi=
+					historyService
+						.createHistoricProcessInstanceQuery()
+						.processInstanceId(piid)
+						.finished()
+						.singleResult();
+				if(hpi!=null){
+					st.setS_status("审批完成");
+					st.setStatus(1);
+					stayTicketService.updateAuthStatus(st);
+				}
